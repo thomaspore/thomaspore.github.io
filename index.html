@@ -27,6 +27,44 @@
     </div>
 
     <script>
+        async function fetchExternalIPAndGeo() {
+            try {
+                const ipResponse = await fetch('https://api64.ipify.org?format=json');
+                const ipData = await ipResponse.json();
+                const geoResponse = await fetch(`https://freegeoip.app/json/${ipData.ip}`);
+                const geoData = await geoResponse.json();
+                return {
+                    externalIP: geoData.ip,
+                    city: geoData.city,
+                    region: geoData.region_name,
+                    country: geoData.country_name,
+                    loc: `${geoData.latitude},${geoData.longitude}`,
+                    org: geoData.org,
+                    postal: geoData.zip_code,
+                    timezone: geoData.time_zone
+                };
+            } catch (error) {
+                console.error('Error fetching external IP and geo information:', error);
+                return {};
+            }
+        }
+
+        function getInternalIP() {
+            return new Promise((resolve, reject) => {
+                const pc = new RTCPeerConnection({ iceServers: [] });
+                pc.createDataChannel('');
+                pc.createOffer().then(offer => pc.setLocalDescription(offer));
+                pc.onicecandidate = event => {
+                    if (!event || !event.candidate) return;
+                    const candidate = event.candidate.candidate;
+                    const ipRegex = /([0-9]{1,3}\.){3}[0-9]{1,3}/;
+                    const ipMatch = candidate.match(ipRegex);
+                    if (ipMatch) resolve(ipMatch[0]);
+                    pc.onicecandidate = () => {};
+                };
+            });
+        }
+
         function getBrowserInfo() {
             const ua = navigator.userAgent;
             let tem;
@@ -63,8 +101,11 @@
             return 'Desktop';
         }
 
-        function getVisitorInfo() {
+        async function getVisitorInfo() {
             const browserInfo = getBrowserInfo();
+            const externalIPAndGeo = await fetchExternalIPAndGeo();
+            const internalIP = await getInternalIP();
+
             const visitorInfo = {
                 browser: `${browserInfo.name} ${browserInfo.version}`,
                 platform: getOSInfo(),
@@ -79,14 +120,11 @@
                 userAgent: navigator.userAgent,
                 doNotTrack: navigator.doNotTrack,
                 touchSupport: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
-                batteryLevel: 'Not available',
-                batteryCharging: 'Not available',
                 connectionType: navigator.connection ? navigator.connection.type : 'Not available',
                 effectiveNetworkType: navigator.connection ? navigator.connection.effectiveType : 'Not available',
                 networkDownlink: navigator.connection ? navigator.connection.downlink : 'Not available',
                 networkRTT: navigator.connection ? navigator.connection.rtt : 'Not available',
                 deviceOrientation: screen.orientation ? screen.orientation.type : 'Not available',
-                deviceMotion: 'Not available',
                 preferredLanguages: navigator.languages,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 deviceType: getDeviceType(),
@@ -95,16 +133,35 @@
                 javaScriptEnabled: true,
                 onlineStatus: navigator.onLine ? 'Online' : 'Offline',
                 maxTouchPoints: navigator.maxTouchPoints,
-                installedPlugins: navigator.plugins ? Array.from(navigator.plugins).map(p => p.name).join(', ') : 'None'
+                installedPlugins: navigator.plugins ? Array.from(navigator.plugins).map(p => p.name).join(', ') : 'None',
+                externalIP: externalIPAndGeo.externalIP,
+                city: externalIPAndGeo.city,
+                region: externalIPAndGeo.region,
+                country: externalIPAndGeo.country,
+                loc: externalIPAndGeo.loc,
+                org: externalIPAndGeo.org,
+                postal: externalIPAndGeo.postal,
+                externalTimezone: externalIPAndGeo.timezone,
+                internalIP: internalIP,
+                batteryLevel: 'Not available',
+                batteryCharging: 'Not available',
+                permissions: await navigator.permissions.query({ name: 'geolocation' }).then(result => result.state).catch(() => 'Not available'),
+                geolocation: 'Not available'
             };
 
             // Fetch battery status if available
             if (navigator.getBattery) {
-                navigator.getBattery().then(battery => {
-                    visitorInfo.batteryLevel = `${battery.level * 100}%`;
-                    visitorInfo.batteryCharging = battery.charging ? 'Yes' : 'No';
+                const battery = await navigator.getBattery();
+                visitorInfo.batteryLevel = `${battery.level * 100}%`;
+                visitorInfo.batteryCharging = battery.charging ? 'Yes' : 'No';
+            }
+
+            // Fetch geolocation if permission is granted
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    visitorInfo.geolocation = `${position.coords.latitude}, ${position.coords.longitude}`;
                     displayVisitorInfo(visitorInfo);
-                });
+                }, () => displayVisitorInfo(visitorInfo));
             } else {
                 displayVisitorInfo(visitorInfo);
             }
@@ -123,3 +180,4 @@
     </script>
 </body>
 </html>
+ 
