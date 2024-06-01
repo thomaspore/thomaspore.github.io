@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visitor Information</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .info {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Visitor Information</h1>
+        <div id="visitor-info"></div>
+    </div>
+
+    <script>
+        function getBrowserInfo() {
+            const ua = navigator.userAgent;
+            let tem;
+            const match = ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || [];
+            if (/trident/i.test(match[1])) {
+                tem = /\brv[ :]+(\d+)/g.exec(ua) || [];
+                return { name: 'IE', version: tem[1] || '' };
+            }
+            if (match[1] === 'Chrome') {
+                tem = ua.match(/\b(OPR|Edg)\/(\d+)/);
+                if (tem != null) return { name: tem[1].replace('OPR', 'Opera'), version: tem[2] };
+            }
+            match[2] = match[2] ? match[2] : navigator.appVersion;
+            return {
+                name: match[1],
+                version: match[2]
+            };
+        }
+
+        function getOSInfo() {
+            const os = navigator.platform;
+            if (os.startsWith('Win')) return 'Windows';
+            if (os.startsWith('Mac')) return 'MacOS';
+            if (os.startsWith('Linux')) return 'Linux';
+            if (/Android/.test(navigator.userAgent)) return 'Android';
+            if (/iPhone|iPad|iPod/.test(navigator.userAgent)) return 'iOS';
+            return 'Unknown';
+        }
+
+        function getDeviceType() {
+            const ua = navigator.userAgent;
+            if (/Mobi|Android/i.test(ua)) return 'Mobile';
+            if (/Tablet|iPad/i.test(ua)) return 'Tablet';
+            return 'Desktop';
+        }
+
+        function getVisitorInfo() {
+            const browserInfo = getBrowserInfo();
+            const visitorInfo = {
+                browser: `${browserInfo.name} ${browserInfo.version}`,
+                platform: getOSInfo(),
+                language: navigator.language,
+                screenResolution: `${window.screen.width}x${window.screen.height}`,
+                screenColorDepth: window.screen.colorDepth,
+                screenPixelDepth: window.screen.pixelDepth,
+                viewportWidth: window.innerWidth,
+                viewportHeight: window.innerHeight,
+                deviceMemory: navigator.deviceMemory || 'Not available',
+                cpuCores: navigator.hardwareConcurrency,
+                userAgent: navigator.userAgent,
+                doNotTrack: navigator.doNotTrack,
+                touchSupport: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
+                batteryLevel: 'Not available',
+                batteryCharging: 'Not available',
+                connectionType: navigator.connection ? navigator.connection.type : 'Not available',
+                effectiveNetworkType: navigator.connection ? navigator.connection.effectiveType : 'Not available',
+                networkDownlink: navigator.connection ? navigator.connection.downlink : 'Not available',
+                networkRTT: navigator.connection ? navigator.connection.rtt : 'Not available',
+                deviceOrientation: screen.orientation ? screen.orientation.type : 'Not available',
+                deviceMotion: 'Not available',
+                preferredLanguages: navigator.languages,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                deviceType: getDeviceType(),
+                referrer: document.referrer,
+                cookiesEnabled: navigator.cookieEnabled,
+                javaScriptEnabled: true,
+                onlineStatus: navigator.onLine ? 'Online' : 'Offline',
+                maxTouchPoints: navigator.maxTouchPoints,
+                installedPlugins: navigator.plugins ? Array.from(navigator.plugins).map(p => p.name).join(', ') : 'None'
+            };
+
+            // Fetch battery status if available
+            if (navigator.getBattery) {
+                navigator.getBattery().then(battery => {
+                    visitorInfo.batteryLevel = `${battery.level * 100}%`;
+                    visitorInfo.batteryCharging = battery.charging ? 'Yes' : 'No';
+                    displayVisitorInfo(visitorInfo);
+                });
+            } else {
+                displayVisitorInfo(visitorInfo);
+            }
+        }
+
+        function displayVisitorInfo(visitorInfo) {
+            const visitorInfoDiv = document.getElementById('visitor-info');
+            let visitorInfoHtml = '';
+            for (const [key, value] of Object.entries(visitorInfo)) {
+                visitorInfoHtml += `<div class="info">${key.replace(/([A-Z])/g, ' $1')}: ${value}</div>`;
+            }
+            visitorInfoDiv.innerHTML = visitorInfoHtml;
+        }
+
+        getVisitorInfo();
+    </script>
+</body>
+</html>
